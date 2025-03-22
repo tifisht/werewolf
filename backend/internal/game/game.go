@@ -17,11 +17,13 @@ type Game struct {
 	Players  []*player.Player
 	Started  bool
 	DayNight string // "day" or "night"
-	stage    string
+	Stage    string
 	DayCount int
 	Mutex    sync.Mutex
 	Config   *config.Config
 	Timeout  *time.Timer
+	Msg      chan string
+	Killed   string
 }
 
 func (g *Game) GetPlayer(playerName string) *player.Player {

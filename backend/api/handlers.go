@@ -128,7 +128,7 @@ func startGame(c *gin.Context) {
 // 玩家行动
 func playerAction(c *gin.Context) {
 	// TODO: 实现玩家行动逻辑
-	var req basicGameRequest
+	var req actionGameRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -143,6 +143,11 @@ func playerAction(c *gin.Context) {
 
 	switch p.Role {
 	case player.Seer:
+
+		c.JSON(http.StatusOK, gin.H{"role": req.Target})
+	case player.Werewolf:
+	case player.Witch:
+	case player.Hunter:
 
 	}
 
