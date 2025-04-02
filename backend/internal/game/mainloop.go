@@ -66,9 +66,9 @@ func wolfAction(g *Game) {
 
 func witchAction(g *Game) {
 	g.Stage = "witchAction"
-	action := <-g.Msg
 	select {
 	case msg := <-g.Msg: // 从 ch 读取数据
+		action := <-g.Msg
 		if action == "save" {
 			p := g.GetPlayer(g.Killed)
 			p.Alive = true
@@ -134,5 +134,36 @@ func speechStart(g *Game) {
 }
 
 func voteStart(g *Game) {
+	g.Stage = "vote"
+	//等待所有人完成投票
+	for {
+		var over bool = true
+		for _, p := range g.Players {
+			over = over && p.Voted
+		}
+		if over {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	voteTable := make(map[string]int)
+
+	for _, p := range g.Players {
+		voteTable[p.VoteTo]++
+	}
+
+	//to be continued......
+	max := 0
+	var votedPlayerName string = ""
+	for s, n := range voteTable {
+		if n > max {
+			max = n
+			votedPlayerName = s
+		}
+	}
+	votedPlayer := g.GetPlayer(votedPlayerName)
+	votedPlayer.Voted = true
+	votedPlayer.Alive = false
 
 }

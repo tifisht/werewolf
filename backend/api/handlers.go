@@ -22,6 +22,7 @@ func SetupRoutes(r *gin.Engine, gameManager *game.GameManager) {
 		game.POST("/start", startGame)
 		game.POST("/action", playerAction)
 		game.POST("/setRole", setRole)
+		game.POST("/vote")
 	}
 
 	// 健康检查(服务器就绪)
@@ -31,23 +32,7 @@ func SetupRoutes(r *gin.Engine, gameManager *game.GameManager) {
 		})
 	})
 	//每秒查询接口
-	r.GET("/status", func(c *gin.Context) {
-		var req basicGameRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		game, err := gm.GetGame(req.GameID)
-		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"status": "ok",
-			"game":   game,
-			"you":    game.GetPlayer(req.PlayerName),
-		})
-	})
+	r.GET("/status", getStatus)
 }
 
 // http创建游戏接口
@@ -164,15 +149,79 @@ func setRole(c *gin.Context) {
 		return
 	}
 	//检查是否已经创建
-	game, err := gm.GetGame(req.GameID)
+	g, err := gm.GetGame(req.GameID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	game.Config.Role.Villager = req.Villager
-	game.Config.Role.Seer = req.Seer
-	game.Config.Role.Witch = req.Witch
-	game.Config.Role.Hunter = req.Hunter
-	game.Config.Role.Wolf = req.Wolf
+	if g.Started {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "游戏已开始!"})
+		return
+	}
+
+	g.Config.Role.Villager = req.Villager
+	g.Config.Role.Witch = req.Witch
+	g.Config.Role.Hunter = req.Hunter
+	g.Config.Role.Wolf = req.Wolf
+	g.Config.Role.Seer = req.Seer
 	c.JSON(http.StatusOK, gin.H{"status": "OK"})
+}
+
+func getStatus(c *gin.Context) {
+	var req basicGameRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	g, err := gm.GetGame(req.GameID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	p := g.GetPlayer(req.PlayerName)
+	switch p.Role {
+	//如果是女巫
+	case player.Witch:
+		c.JSON(http.StatusOK, gin.H{
+			"status": "ok",
+			"game": gin.H{
+				"started":  g.Started,
+				"DayNight": g.DayNight,
+				"stage":    g.Stage,
+				"DayCount": g.DayCount,
+				"players":  g.Players,
+				"killed":   g.Killed,
+			},
+			"you": g.GetPlayer(req.PlayerName),
+		})
+	//预言家
+	case player.Seer:
+		c.JSON(http.StatusOK, gin.H{
+			"status": "ok",
+			"game": gin.H{
+				"started":  g.Started,
+				"DayNight": g.DayNight,
+				"stage":    g.Stage,
+				"DayCount": g.DayCount,
+				"killed":   g.Killed,
+				"players":  g.Players,
+			},
+			"you": g.GetPlayer(req.PlayerName),
+		})
+	default:
+		c.JSON(http.StatusOK, gin.H{
+			"status": "ok",
+			"game": gin.H{
+				"started":  g.Started,
+				"DayNight": g.DayNight,
+				"stage":    g.Stage,
+				"DayCount": g.DayCount,
+				"killed":   g.Killed,
+			},
+			"you": g.GetPlayer(req.PlayerName),
+		})
+
+	}
+
 }
